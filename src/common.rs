@@ -1,4 +1,4 @@
-use embedded_hal::spi::SpiDevice;
+use embedded_hal::{delay::DelayNs, spi::SpiDevice};
 
 use crate::{Ad983x, BitFlags, Config, Error, FrequencyRegister, PhaseRegister, PoweredDown};
 use core::marker::PhantomData;
@@ -97,10 +97,11 @@ where
     ///
     /// This will change the mode to 28-bit if it is not used.
     /// Returns `Error::InvalidArgument` if providing a value that does not fit in 28 bits.
-    pub fn set_frequency(
+    pub fn set_frequency<DEL: DelayNs + Sized>(
         &mut self,
         register: FrequencyRegister,
         value: u32,
+        delay: Option<&mut DEL>
     ) -> Result<(), Error<E>> {
         Self::check_value_fits(value, 28)?;
         let control = self.control.with_high(BitFlags::B28);
@@ -109,6 +110,9 @@ where
         let msb = value >> 14;
         let reg = Self::get_freq_register_bits(register);
         self.write(reg | lsb as u16)?;
+        if let Some(delay) = delay {
+            delay.delay_ms(200);
+        }
         self.write(reg | msb as u16)
     }
 
